@@ -1,0 +1,214 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage[top=3cm,bottom=2cm,left=3cm,right=2cm]{geometry}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage{titlesec}
+\usepackage{microtype}
+\usepackage{hyperref}
+
+% Configuração de espaçamento e recuo de parágrafo segundo a ABNT
+\onehalfspacing
+\setlength{\parindent}{1.25cm}
+
+% Configuração de títulos de seções
+\titleformat{\section}{\normalfont\normalsize\bfseries\uppercase}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalfont\normalsize\itshape}{\thesubsubsection}{1em}{}
+
+\begin{document}
+
+% --- CAPA ---
+\begin{titlepage}
+    \begin{center}
+        \large\textbf{PONTIFÍCIA UNIVERSIDADE CATÓLICA DE CAMPINAS}\\
+        \large\textbf{FACULDADE DE ENGENHARIA DE SOFTWARE}\\
+        \vspace{4cm}
+        \large\textbf{CAIO DOS SANTOS CUNHA}\\
+        \large\textbf{GUILHERME GIUSEPE PIOVEZAN}\\
+        \large\textbf{JHENIFER LAÍS BARBOSA}\\
+        \vspace{4cm}
+        \Large\textbf{Inteligência Artificial e Aprendizado de Máquina - Avaliação Prática 2}\\
+        \vfill
+        \large\textbf{CAMPINAS}\\
+        \large\textbf{2026}
+    \end{center}
+\end{titlepage}
+
+% --- SUMÁRIO ---
+\newpage
+\thispagestyle{empty}
+\pdfbookmark[0]{\contentsname}{toc}
+\tableofcontents
+\cleardoublepage
+
+% --- CORPO DO TEXTO ---
+\pagenumbering{arabic}
+
+% --- INTRODUÇÃO ---
+\section{INTRODUÇÃO}
+
+Diferenciar um gato de um cachorro ou um carro de um caminhão é algo natural para nós, mas um grande desafio para os computadores, que enxergam imagens apenas como uma enorme matriz de números (\textit{pixels}). A área da Inteligência Artificial que busca solucionar esse problema é a Visão Computacional. 
+
+Este projeto tem como objetivo central construir um sistema automatizado capaz de classificar imagens corretamente por meio de uma Rede Neural Convolucional (CNN). Para isso, utilizamos o \textit{dataset} CIFAR-10, composto por 60 mil imagens digitais divididas em 10 categorias, que incluem desde animais até meios de transporte.
+
+O principal problema de pesquisa deste trabalho é evitar que a máquina apenas ``decore'' os dados de treino (fenômeno conhecido como \textit{overfitting}), perdendo a capacidade de reconhecer novas imagens no futuro. Nossa hipótese é que a aplicação rigorosa de uma etapa de validação serve como um controle de qualidade essencial para ajustar o modelo e garantir sua capacidade de generalização.
+
+Para alcançar esse resultado, os objetivos específicos compreendem:
+\begin{itemize}
+    \item \textbf{Construir o pipeline de dados:} realizar o carregamento, a normalização e a ampliação artificial das imagens (\textit{data augmentation});
+    \item \textbf{Desenvolver a arquitetura:} estruturar uma rede convolucional eficiente para extrair características visuais das fotos;
+    \item \textbf{Otimizar o treinamento:} monitorar o aprendizado utilizando critérios de parada precoce (\textit{early stopping}) para salvar o melhor classificador;
+    \item \textbf{Avaliar o desempenho final:} analisar os erros e acertos no conjunto de teste por meio de métricas estatísticas e da matriz de confusão.
+\end{itemize}
+
+% --- FUNDAMENTAÇÃO TEÓRICA ---
+\newpage
+\section{FUNDAMENTAÇÃO TEÓRICA}
+\subsection{Conceitos de Aprendizado de Máquina}
+O Aprendizado de Máquina Supervisionado (\textit{Supervised Machine Learning}) funciona de maneira muito semelhante ao processo de ensino de uma criança. Nós apresentamos ao computador um grande conjunto de exemplos (imagens) acompanhados de suas respectivas "respostas corretas" (as etiquetas ou rótulos, como "gato", "cachorro" ou "navio"). A máquina analisa exaustivamente esses dados e tenta encontrar padrões matemáticos que conectem as características visuais da imagem à sua categoria correspondente.
+
+O grande desafio desse processo é no equilíbrio do aprendizado, que pode falhar de duas maneiras principais:
+\begin{itemize}
+    \item \textbf{Underfitting (Subajuste):} Ocorre quando o modelo é simples demais e não consegue aprender sequer os padrões básicos dos dados. É o equivalente a um aluno que não estudou o suficiente e vai mal tanto nos exercícios de sala de aula quanto na prova final.
+    \item \textbf{Overfitting (Sobreajuste):} É o problema central que este projeto combate. Ocorre quando a máquina decora perfeitamente as imagens de treino (inclusive os ruídos e detalhes irrelevantes, como a cor do fundo), mas não aprende a essência matemática do objeto. É o equivalente a um aluno que decorou as perguntas do livro didático: se você mudar uma única palavra ou o número da questão na prova, ele erra, pois não aprendeu a matéria de verdade, apenas memorizou o cenário.
+\end{itemize}
+O objetivo do nosso projeto é o oposto: a \textbf{Generalização}, que é a capacidade de a inteligência artificial olhar para uma foto completamente inédita (que ela nunca viu antes) e, ainda assim, identificar o objeto corretamente baseando-se no aprendizado real dos formatos e texturas.
+
+\subsection{Algoritmos de Classificação Empregados}
+O classificador desenvolvido e empregado neste experimento foi uma \textbf{Rede Neural Convolucional} (CNN, do inglês \textit{Convolutional Neural Network}), batizada em nosso código como \texttt{ClfGen}. Redes neurais são modelos matemáticos inspirados na estrutura biológica do cérebro humano, compostos por camadas de neurônios artificiais conectados que processam a informação em estágios.
+
+Diferente de algoritmos tradicionais que exigem que um humano diga quais características procurar em uma imagem, as CNNs possuem a capacidade de descobrir sozinhas o que é mais importante em uma foto através de camadas especializadas:
+\begin{itemize}
+    \item \textbf{Camadas Convolucionais (\textit{Conv2d}):} Funcionam como lentes ou filtros que deslizam pela imagem procurando elementos visuais específicos. As primeiras camadas aprendem a detectar traços simples (como linhas retas e bordas); as intermediárias identificam formas geométricas (círculos, curvas); e as finais reconhecem partes complexas do objeto (como rodas de carros ou orelhas de animais).
+    \item \textbf{Normalização em Lote (\textit{BatchNorm2d}):} Atua como um "estabilizador" emocional dos dados, reajustando as escalas numéricas dos pixels após cada passagem para que o treinamento ocorra de forma muito mais rápida e matematicamente estável.
+    \item \textbf{Agrupamento Máximo (\textit{MaxPool2d}):} É um redutor de tamanho. Ele divide a imagem em pequenas regiões e extrai apenas o pixel de maior valor de cada uma. Isso serve para reduzir o peso computacional e garantir que o modelo identifique a característica não importa em qual canto da imagem ela esteja.
+    \item \textbf{Abandono (\textit{Dropout}):} É uma técnica de regularização altamente eficaz. Durante cada rodada de treino, desligamos aleatoriamente uma porcentagem dos neurônios (no nosso caso, 30\% e 50\% nas camadas finais). Isso força a rede a não depender de um único neurônio "genial" e distribui o aprendizado de forma robusta por todo o sistema, mitigando fortemente o \textit{overfitting}.
+    \item \textbf{Camadas Densas / Totalmente Conectadas (\textit{Linear} / \textit{Head}):} Ficam localizadas no final da rede. Elas pegam todas as características visuais extraídas pelas camadas anteriores, juntam as peças do quebra-cabeça e calculam uma pontuação (\textit{logits}) para cada uma das 10 classes do CIFAR-10, definindo a resposta final.
+\end{itemize}
+
+\subsection{Métricas de Avaliação de Desempenho}
+Para avaliar matematicamente a qualidade do nosso classificador, utilizamos um conjunto de métricas estatísticas consolidadas:
+
+\begin{itemize}
+    \item \textbf{Acurácia (\textit{Accuracy}):} É a métrica mais intuitiva, representando a taxa geral de acertos. É calculada dividindo o total de imagens classificadas corretamente pelo número total de imagens avaliadas:
+    \begin{equation}
+    \text{Acurácia} = \frac{\text{Acertos Totais}}{\text{Total de Amostras}}
+    \end{equation}
+    Apesar de simples, a acurácia isolada pode ser enganosa se o banco de dados for desequilibrado (por exemplo, se houvesse muito mais carros do que aviões). Como nosso \textit{dataset} foi balanceado pelo processo de divisão estratificada, ela se torna altamente confiável.
+
+    \item \textbf{Precisão (\textit{Precision}):} Responde à pergunta: "De todas as imagens que o modelo \textbf{disse} que eram de uma determinada classe, quantas eram realmente daquela classe?". É o indicativo de quão confiável o modelo é ao fazer uma afirmação, evitando falsos alarmes (falsos positivos).
+    \begin{equation}
+    \text{Precisão} = \frac{\text{Verdadeiros Positivos}}{\text{Verdadeiros Positivos} + \text{Falsos Positivos}}
+    \end{equation}
+
+    \item \textbf{Sensibilidade ou Revocação (\textit{Recall}):} Responde à pergunta: "De todas as imagens que \textbf{realmente pertenciam} a uma classe na vida real, quantas o modelo foi capaz de encontrar e capturar?". Mede a eficiência em não deixar nenhuma imagem passar batida (falsos negativos).
+    \begin{equation}
+    \text{Sensibilidade} = \frac{\text{Verdadeiros Positivos}}{\text{Verdadeiros Positivos} + \text{Falsos Negativos}}
+    \end{equation}
+
+    \item \textbf{F1-Score:} Como muitas vezes a Precisão e a Sensibilidade competem entre si (melhorar uma pode piorar a outra), o F1-Score funciona como uma média harmônica balanceada entre as duas. É a métrica ideal para dar uma nota única e justa ao desempenho de cada classe.
+    \begin{equation}
+    \text{F1-Score} = 2 \times \frac{\text{Precisão} \times \text{Sensibilidade}}{\text{Precisão} + \text{Sensibilidade}}
+    \end{equation}
+
+    \item \textbf{Matriz de Confusão:} É uma tabela visual cruzada altamente informativa. Suas linhas representam as classes reais das imagens e suas colunas representam as previsões feitas pelo computador. Os acertos ficam concentrados na linha diagonal principal da matriz. Qualquer número fora dessa diagonal revela exatamente onde a rede está se "confundindo" (por exemplo, mostrando quantas vezes ela achou que um gato era, na verdade, um cachorro).
+\end{itemize}
+
+% --- METODOLOGIA E VALIDAÇÃO ---
+\newpage
+\section{METODOLOGIA E VALIDAÇÃO}
+\subsection{Papel da Validação no Desempenho do Classificador}
+A estratégia de validação é o pilar mais importante para garantir a qualidade de um sistema de Inteligência Artificial. Em nossa implementação, dividimos o banco de dados original através do método \textit{Holdout Estratificado} nas seguintes proporções exatas: 70\% para o conjunto de Treino, 15\% para o conjunto de Validação e 15\% para o conjunto de Teste. O termo "estratificado" significa que garantimos matematicamente que todas as 10 classes possuam a mesmíssima quantidade proporcional de fotos em cada um desses três pedaços, evitando favorecer qualquer categoria.
+
+Para entender o papel de cada partição, podemos recorrer novamente à nossa analogia escolar:
+\begin{enumerate}
+    \item \textbf{O Conjunto de Treino (70\%):} São os livros didáticos e exercícios de fixação com gabarito que o aluno estuda diariamente. É aqui que o modelo ajusta seus parâmetros internos básicos.
+    \item \textbf{O Conjunto de Validação (15\%):} Funciona como aqueles simulados periódicos realizados em sala de aula antes do exame oficial. O aluno não pode decorar o simulado (já que as questões mudam a cada rodada), mas o professor usa as notas do simulado para avaliar se o aluno está aprendendo de verdade ou apenas decorando. Se a nota do simulado começar a cair enquanto a nota dos exercícios de fixação continua 100\%, o professor sabe que o aluno começou a sofrer de \textit{overfitting}.
+    \item \textbf{O Conjunto de Teste (15\%):} É o vestibular oficial de final de ano. Ele fica guardado em um cofre trancado e a máquina só tem acesso a ele uma única vez, no final de tudo. Serve para dar o veredito final e realista sobre a inteligência do sistema.
+\end{enumerate}
+
+Em nosso pipeline de execução, o papel prático da validação se deu em três frentes críticas:
+\begin{itemize}
+    \item \textbf{Seleção de Modelos (\textit{Model Selection}):} Permitiu monitorar a evolução do aprendizado época por época. 
+    \item \textbf{Agendamento de Taxa de Aprendizado (\textit{Learning Rate Scheduler}):} Usando a estratégia de marcos temporais no otimizador SGD (nas épocas 60 e 120), a validação indicou o momento exato em que a rede precisava "dar passos mais curtos e cuidadosos" para refinar os detalhes finos do aprendizado.
+    \item \textbf{Parada Precoce (\textit{Early Stopping}):} Configurada com uma paciência de 10 épocas, essa rotina atuou como um fiscal automatizado. Se a acurácia do conjunto de validação ficasse 10 rodadas consecutivas sem apresentar melhorias, o treinamento era interrompido imediatamente e o melhor estado anterior da rede era salvo no arquivo \texttt{best\_clfgen.pth}, evitando que o modelo continuasse rodando e estragasse o aprendizado por excesso de decoreba (\textit{overfitting}).
+\end{itemize}
+
+% --- ANÁLISE DOS RESULTADOS ---
+\newpage
+\section{ANÁLISE DOS RESULTADOS}
+\subsection{Comparação de Modelos}
+Comparamos algo aqui... (ADAM e SGD???)
+
+\subsection{Discussão do Impacto da Validação Cruzada e do Treinamento}
+Discutimos algo aqui...
+
+% --- CONCLUSÃO ---
+\newpage
+\section{CONCLUSÃO}
+Concluímos algo aqui...
+
+% --- REFERÊNCIAS ---
+\newpage
+\section*{REFERÊNCIAS}
+\addcontentsline{toc}{section}{REFERÊNCIAS}
+
+\noindent ULTRALYTICS. \textbf{CIFAR-10 Image Classification Dataset}. Ultralytics Docs, [s.d.]. Disponível em: \url{https://docs.ultralytics.com/pt/datasets/classify/cifar10/}. Acesso em: 26 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent LEMES, Dimas Augusto Mendes. \textbf{Aula 03 - Aprendizado de Máquina: Inteligência Artificial e Aprendizado de Máquina}. Material de aula, 2026. Disponível em: \url{https://puc-campinas.instructure.com/courses/91428/files/3887265?module_item_id=557013}. Acesso em: 26 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent LEMES, Dimas Augusto Mendes. \textbf{Aula 04 - Aprendizado Profundo: Inteligência Artificial e Aprendizado de Máquina}. Material de aula, 2026. Disponível em: \url{https://puc-campinas.instructure.com/courses/91428/files?preview=4061118}. Acesso em: 26 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent CS231n: Deep Learning for Computer Vision. \textbf{Convolutional Neural Networks for Visual Recognition}. Stanford University, [s.d.]. Disponível em: \url{https://cs231n.github.io/convolutional-networks/}. Acesso em: 27 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent PYTORCH. \textbf{Training a Classifier}. PyTorch Tutorials, 2017. Disponível em: \url{https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html}. Acesso em: 27 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent PYTORCH. \textbf{Transfer Learning for Computer Vision Tutorial}. PyTorch Tutorials, 2017. Disponível em: \url{https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html}. Acesso em: 27 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent PYTORCH. \textbf{Transforming and augmenting images}. Torchvision v0.17 Documentation, [s.d.]. Disponível em: \url{https://pytorch.org/vision/stable/transforms.html}. Acesso em: 27 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent PYTORCH. \textbf{Torch.utils.data}. PyTorch Documentation, 2025. Disponível em: \url{https://pytorch.org/docs/stable/data.html}. Acesso em: 27 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent PYTORCH. \textbf{Torch.optim}. PyTorch Documentation, 2025. Disponível em: \url{https://pytorch.org/docs/stable/optim.html}. Acesso em: 27 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent PYTORCH. \textbf{torch.optim.SGD}. PyTorch Documentation, [s.d.]. Disponível em: \url{https://docs.pytorch.org/docs/2.12/generated/torch.optim.SGD.html}. Acesso em: 27 maio 2026. 
+
+\vspace{0.5cm}
+
+\noindent PYTORCH. \textbf{torch.optim.lr\_scheduler.MultiStepLR}. PyTorch Documentation, [s.d.]. Disponível em: \url{https://docs.pytorch.org/docs/2.12/generated/torch.optim.lr_scheduler.MultiStepLR.html}. Acesso em: 27 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent SCIKIT-LEARN. \textbf{sklearn.model\_selection.train\_test\_split}. scikit-learn v1.4 Documentation, [s.d.]. Disponível em: \url{https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html}. Acesso em: 27 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent SCIKIT-LEARN. \textbf{sklearn.metrics.confusion\_matrix}. scikit-learn v1.4 Documentation, [s.d.]. Disponível em: \url{https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html}. Acesso em: 27 maio 2026.
+
+\vspace{0.5cm}
+
+\noindent SCIKIT-LEARN. \textbf{sklearn.metrics.classification\_report}. scikit-learn v1.4 Documentation, [s.d.]. Disponível em: \url{https://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html}. Acesso em: 27 maio 2026.
+
+\end{document}
