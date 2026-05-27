@@ -9,6 +9,7 @@
 \usepackage{titlesec}
 \usepackage{microtype}
 \usepackage{hyperref}
+\usepackage{float}
 
 % Configuração de espaçamento e recuo de parágrafo segundo a ABNT
 \onehalfspacing
@@ -79,7 +80,7 @@ O grande desafio desse processo é no equilíbrio do aprendizado, que pode falha
 O objetivo do nosso projeto é o oposto: a \textbf{Generalização}, que é a capacidade de a inteligência artificial olhar para uma foto completamente inédita (que ela nunca viu antes) e, ainda assim, identificar o objeto corretamente baseando-se no aprendizado real dos formatos e texturas.
 
 \subsection{Algoritmos de Classificação Empregados}
-O classificador desenvolvido e empregado neste experimento foi uma \textbf{Rede Neural Convolucional} (CNN, do inglês \textit{Convolutional Neural Network}), batizada em nosso código como \texttt{ClfGen}. Redes neurais são modelos matemáticos inspirados na estrutura biológica do cérebro humano, compostos por camadas de neurônios artificiais conectados que processam a informação em estágios.
+O classificador desenvolvido e empregado neste experimento foi uma \textbf{Rede Neural Convolucional} (CNN, do inglês \textit{Convolutional Neural Network}), batizada em nosso código como \texttt{Model}. Redes neurais são modelos matemáticos inspirados na estrutura biológica do cérebro humano, compostos por camadas de neurônios artificiais conectados que processam a informação em estágios.
 
 Diferente de algoritmos tradicionais que exigem que um humano diga quais características procurar em uma imagem, as CNNs possuem a capacidade de descobrir sozinhas o que é mais importante em uma foto através de camadas especializadas:
 \begin{itemize}
@@ -134,23 +135,72 @@ Para entender o papel de cada partição, podemos recorrer novamente à nossa an
 Em nosso pipeline de execução, o papel prático da validação se deu em três frentes críticas:
 \begin{itemize}
     \item \textbf{Seleção de Modelos (\textit{Model Selection}):} Permitiu monitorar a evolução do aprendizado época por época. 
-    \item \textbf{Agendamento de Taxa de Aprendizado (\textit{Learning Rate Scheduler}):} Usando a estratégia de marcos temporais no otimizador SGD (nas épocas 60 e 120), a validação indicou o momento exato em que a rede precisava "dar passos mais curtos e cuidadosos" para refinar os detalhes finos do aprendizado.
-    \item \textbf{Parada Precoce (\textit{Early Stopping}):} Configurada com uma paciência de 10 épocas, essa rotina atuou como um fiscal automatizado. Se a acurácia do conjunto de validação ficasse 10 rodadas consecutivas sem apresentar melhorias, o treinamento era interrompido imediatamente e o melhor estado anterior da rede era salvo no arquivo \texttt{best\_clfgen.pth}, evitando que o modelo continuasse rodando e estragasse o aprendizado por excesso de decoreba (\textit{overfitting}).
+    \item \textbf{Agendamento de Taxa de Aprendizado (\textit{Learning Rate Scheduler}):} Usando o agendador \textit{ReduceLROnPlateau} combinado com o otimizador Adam, a validação indicou o momento exato em que a rede precisava dar passos mais curtos e cuidadosos para refinar os detalhes finos do aprendizado, reduzindo automaticamente o lr ao detectar estagnação da acurácia de validação.
+    \item \textbf{Parada Precoce (\textit{Early Stopping}):} Configurada com uma paciência de 10 épocas, essa rotina atuou como um fiscal automatizado. Se a acurácia do conjunto de validação ficasse 10 rodadas consecutivas sem apresentar melhorias, o treinamento era interrompido imediatamente e o melhor estado anterior da rede era salvo no arquivo \texttt{best\_model.pth}, evitando que o modelo continuasse rodando e estragasse o aprendizado por excesso de decoreba (\textit{overfitting}).
 \end{itemize}
 
 % --- ANÁLISE DOS RESULTADOS ---
 \newpage
 \section{ANÁLISE DOS RESULTADOS}
-\subsection{Comparação de Modelos}
-Comparamos algo aqui... (ADAM e SGD???)
+\subsection{Comparação de Otimizadores (SGD e Adam)}
 
-\subsection{Discussão do Impacto da Validação Cruzada e do Treinamento}
-Discutimos algo aqui...
+Os dois experimentos utilizaram a mesma arquitetura, os mesmos dados e o mesmo agendador \textit{ReduceLROnPlateau} (fator 0,5, paciência de 5 épocas sobre a acurácia de validação). A diferença entre eles foi exclusivamente o otimizador.
+
+O primeiro experimento utilizou o SGD (\textit{Stochastic Gradient Descent}) com taxa de aprendizado inicial de 0,01, momentum de 0,9 e decaimento de pesos de $5 \times 10^{-4}$. O treinamento convergiu de forma estável ao longo de 114 épocas, com o \textit{scheduler} reduzindo o lr automaticamente em múltiplas etapas à medida que a validação estagnava: de 0,010 para 0,005 na época 34, depois para 0,0025 na época 40, para 0,00125 na época 64 e continuando a se reduzir progressivamente até aproximadamente 0,000078 nas épocas finais. O melhor resultado foi alcançado na época 104, com acurácia de validação de 87,99\% e acurácia no conjunto de teste de 87,57\%.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../imagens/SGD/loss.jpeg}
+    \caption{Curvas de acurácia e loss ao longo das épocas com o otimizador SGD.}
+    \label{fig:sgd-loss}
+\end{figure}
+
+O segundo experimento utilizou o Adam (\textit{Adaptive Moment Estimation}) com taxa de aprendizado inicial de $1 \times 10^{-3}$ e o mesmo agendador. O treinamento também convergiu de forma suave, com o lr passando de 0,001 para 0,0005 na época 48, para 0,00025 na época 70, para 0,000125 na época 85 e chegando a 0,000063 na época 95. O melhor resultado foi alcançado na época 95, com acurácia de validação de 86,90\% e acurácia no conjunto de teste de 86,59\%. O \textit{early stopping} encerrou o treinamento na época 105.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../imagens/Adam/loss.png}
+    \caption{Curvas de acurácia e loss ao longo das épocas com o otimizador Adam.}
+    \label{fig:adam-loss}
+\end{figure}
+
+Os dois otimizadores produziram treinamentos estáveis e resultados próximos, com o SGD saindo ligeiramente à frente em ambas as métricas. A diferença de aproximadamente 1 ponto percentual no teste (87,57\% contra 86,59\%) sugere que, com o agendador adaptativo controlando as reduções de lr, o SGD conseguiu extrair um refinamento um pouco maior do que o Adam ao longo das épocas finais.
+
+\subsection{Discussão do Impacto da Validação e do Treinamento}
+
+Durante todo o processo de treinamento, o conjunto de validação exerceu três funções simultâneas. A primeira foi a seleção do melhor estado da rede: a cada época, se a acurácia de validação superasse o melhor valor registrado até então, o estado dos pesos era salvo no arquivo \texttt{best\_model.pth}. Isso garantiu que o modelo entregue ao teste final fosse sempre o de maior desempenho observado e não o da última época executada.
+
+A segunda função foi alimentar o agendador de taxa de aprendizado. O \textit{ReduceLROnPlateau} monitora continuamente a acurácia de validação e, ao detectar que ela estacionou, reduz o lr pela metade. É uma lógica parecida com a de um estudante que percebe que estudar do mesmo jeito não está mais trazendo resultado e decide mudar a estratégia. O modelo, ao atingir um platô natural, passou a dar passos mais finos e conseguiu extrair ganhos adicionais que de outra forma não seriam possíveis.
+
+A terceira função foi controlar o \textit{early stopping}. Com paciência de 10 épocas, essa rotina atuou como um limite de segurança: se o modelo não conseguisse melhorar a validação por 10 rodadas consecutivas, o treinamento era encerrado, evitando que a rede continuasse ajustando os pesos sem ganho real de generalização.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../imagens/SGD/confusão.jpeg}
+    \caption{Matriz de confusão no conjunto de teste com o otimizador SGD.}
+    \label{fig:sgd-cm}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{../imagens/Adam/confusao.png}
+    \caption{Matriz de confusão no conjunto de teste com o otimizador Adam.}
+    \label{fig:adam-cm}
+\end{figure}
+
+O resultado prático dessa estratégia aparece nas curvas de treinamento. A acurácia de validação acompanhou de perto a de treino ao longo de todas as épocas, sem sinais evidentes de \textit{overfitting}, o que indica que o modelo aprendeu os padrões reais das categorias e não apenas decorou os exemplos do conjunto de treino.
 
 % --- CONCLUSÃO ---
 \newpage
 \section{CONCLUSÃO}
-Concluímos algo aqui...
+
+Este trabalho mostrou que construir um classificador de imagens eficiente vai muito além de definir uma arquitetura de rede. O pipeline completo, da divisão estratificada dos dados até o monitoramento contínuo pela validação, foi determinante para o resultado final obtido.
+
+A comparação entre SGD e Adam mostrou que, quando ambos utilizam o mesmo agendador adaptativo, os dois otimizadores produzem treinamentos igualmente estáveis. O SGD, com lr inicial de 0,01 e decaimento de pesos, conseguiu um refinamento ligeiramente maior nas épocas finais e encerrou com resultado superior ao Adam nas duas métricas analisadas.
+
+O melhor resultado geral foi obtido pelo SGD, com acurácia de validação de 87,99\% e acurácia no conjunto de teste independente de 87,57\%. O Adam atingiu 86,90\% de validação e 86,59\% no teste. Ambos os números são expressivos para uma CNN de aproximadamente 1,1 milhão de parâmetros aplicada ao CIFAR-10 e confirmam a hipótese central do projeto: a validação rigorosa, aliada ao agendamento adaptativo do lr e ao \textit{early stopping}, é o principal mecanismo para garantir que o modelo aprenda a generalizar e não apenas a memorizar os dados de treino.
+
+Como limitação, a arquitetura utilizada tem um teto natural de desempenho. Redes mais profundas como ResNet conseguem superar 90\% no CIFAR-10, mas fogem ao escopo de uma CNN pequena proposto pelo enunciado. 
 
 % --- REFERÊNCIAS ---
 \newpage
